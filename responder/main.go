@@ -44,6 +44,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 var conn *net.UDPConn
+var peerAddr *net.UDPAddr
 var Tr_send noise2.NoiseSymmetricKey
 var Tr_recv noise2.NoiseSymmetricKey
 
@@ -85,7 +86,8 @@ func main() {
 	fmt.Println("等待客户端连接...")
 
 	buffer := make([]byte, MaxMessageSize)
-	n, peerAddr, err := conn.ReadFromUDP(buffer)
+	var n int
+	n, peerAddr, err = conn.ReadFromUDP(buffer)
 	if err != nil {
 		fmt.Println("udp接收数据失败:", err)
 		return
@@ -141,7 +143,7 @@ func main() {
 
 	fmt.Println("packet2发送成功。")
 
-	iface, err := createTun("10.10.10.1")
+	iface, err := createTun("10.10.10.2")
 	if err != nil {
 		fmt.Println("interface can not created:", err)
 		return
@@ -197,7 +199,7 @@ func listenInterface(iface *water.Interface) {
 		encryptCode := util.AesEncrypt(packet[:n], Tr_send[:])
 
 		if conn != nil {
-			_, err = conn.Write(encryptCode)
+			_, err = conn.WriteToUDP(encryptCode, peerAddr)
 			if err != nil {
 				log.Println("conn write error:", err)
 			}

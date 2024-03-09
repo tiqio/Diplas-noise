@@ -1,0 +1,50 @@
+python3 CiscoIOUKeygen.py | grep -A 1 'license' > iourc
+
+换源：
+wget -O /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo
+sudo yum clean all
+sudo yum makecache
+yum install docker
+sudo systemctl start podman
+sudo systemctl enable podman
+
+配置IP：
+Client：
+nmcli connection add ifname ens4 con-name ens4 type ethernet ipv4.method manual ipv4.addresses 11.11.11.1/24 autoconnect yes
+nmcli connection up ens4
+Server：
+nmcli connection add ifname ens4 con-name ens4 type ethernet ipv4.method manual ipv4.addresses 22.22.22.1/24 autoconnect yes
+nmcli connection up ens4
+
+Client和Server关闭防火墙和SELinux：
+systemctl stop firewalld
+vim /etc/selinux/config
+
+外网互通：
+CentOS1：ip route add 22.22.22.0/24 dev ens4
+CentOS2：ip route add 11.11.11.0/24 dev ens4
+
+创建Podman容器模拟内部网络：
+docker.io/nicolaka/netshoot:latest
+
+Client：
+podman network create client-network --subnet=192.168.1.0/24
+podman network inspect client-network
+podman run -it --name client-host --network client-network docker.io/nicolaka/netshoot:latest
+
+Server：
+podman network create server-network --subnet=192.168.2.0/24
+podman network inspect client-network
+podman run -it --name server-host --network server-network docker.io/nicolaka/netshoot:latest
+
+podman restart xxx / podman exec -it xxx /bin/sh
+
+建立隧道：
+CentOS1：Client
+CentOS2：Server
+
+流量控制，防止走公网出口，匹配感兴趣流量：
+CentOS1：ip route add 192.168.2.0/24 dev tun0
+CentOS2：ip route add 192.168.1.0/24 dev tun0
+
+
